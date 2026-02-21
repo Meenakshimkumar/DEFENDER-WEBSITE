@@ -1,0 +1,13 @@
+flask
+flask-cors
+ultralytics
+opencv-python
+Pillow
+werkzeug
+
+# Added for HuggingFace audio classification
+transformers>=4.30.0
+# PyTorch runtime required by many Transformers models
+torch
+# Audio file support
+soundfile

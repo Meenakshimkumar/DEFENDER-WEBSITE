@@ -1,0 +1,32 @@
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Frontend Generated
+lovable-uploads/
+eslint-report.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+.env
+
+# Mac / Windows
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# Backend Checkpoints and Weights
+backend/runs/
+backend/yolov8n.pt
+backend/test.wav
+backend/test.flac

@@ -1,0 +1,163 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 220 25% 97%;
+    --foreground: 220 20% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 15%;
+
+    --primary: 152 65% 35%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 265 60% 55%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 220 15% 92%;
+    --muted-foreground: 220 10% 45%;
+
+    --accent: 35 95% 55%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --warning: 38 95% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --success: 152 70% 40%;
+    --success-foreground: 0 0% 100%;
+
+    --info: 200 85% 50%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 220 15% 88%;
+    --input: 220 15% 88%;
+    --ring: 152 65% 35%;
+
+    --radius: 0.75rem;
+
+    --status-online: 152 70% 40%;
+    --status-offline: 0 0% 60%;
+    --status-warning: 38 95% 50%;
+
+    --chart-1: 152 65% 35%;
+    --chart-2: 265 60% 55%;
+    --chart-3: 35 95% 55%;
+    --chart-4: 200 85% 50%;
+    --chart-5: 340 75% 55%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(152, 65%, 35%), hsl(180, 70%, 40%));
+    --gradient-secondary: linear-gradient(135deg, hsl(265, 60%, 55%), hsl(290, 65%, 60%));
+    --gradient-accent: linear-gradient(135deg, hsl(35, 95%, 55%), hsl(25, 100%, 60%));
+    --gradient-warm: linear-gradient(135deg, hsl(340, 75%, 55%), hsl(25, 100%, 60%));
+    --gradient-cool: linear-gradient(135deg, hsl(200, 85%, 50%), hsl(180, 70%, 45%));
+  }
+
+  .dark {
+    --background: 220 25% 8%;
+    --foreground: 220 15% 95%;
+
+    --card: 220 25% 12%;
+    --card-foreground: 220 15% 95%;
+
+    --popover: 220 25% 12%;
+    --popover-foreground: 220 15% 95%;
+
+    --primary: 152 65% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 265 55% 60%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 220 15% 18%;
+    --muted-foreground: 220 10% 60%;
+
+    --accent: 35 95% 55%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 65% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --warning: 38 95% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --success: 152 65% 50%;
+    --success-foreground: 0 0% 100%;
+
+    --info: 200 80% 55%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 220 15% 22%;
+    --input: 220 15% 22%;
+    --ring: 152 65% 45%;
+
+    --status-online: 152 65% 50%;
+    --status-offline: 0 0% 50%;
+    --status-warning: 38 95% 50%;
+
+    --chart-1: 152 65% 45%;
+    --chart-2: 265 55% 60%;
+    --chart-3: 35 95% 55%;
+    --chart-4: 200 80% 55%;
+    --chart-5: 340 70% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+  
+  .gradient-secondary {
+    background: var(--gradient-secondary);
+  }
+  
+  .gradient-accent {
+    background: var(--gradient-accent);
+  }
+  
+  .gradient-warm {
+    background: var(--gradient-warm);
+  }
+  
+  .gradient-cool {
+    background: var(--gradient-cool);
+  }
+  
+  .glass {
+    @apply bg-card/80 backdrop-blur-lg border border-border/50;
+  }
+  
+  .glow-primary {
+    box-shadow: 0 0 20px hsl(152 65% 35% / 0.3);
+  }
+  
+  .glow-secondary {
+    box-shadow: 0 0 20px hsl(265 60% 55% / 0.3);
+  }
+  
+  .glow-accent {
+    box-shadow: 0 0 20px hsl(35 95% 55% / 0.3);
+  }
+}
