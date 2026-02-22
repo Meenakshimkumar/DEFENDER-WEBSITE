@@ -31,7 +31,7 @@ const Heatmap = () => {
   useEffect(() => {
     const fetchHeatmapData = async () => {
       try {
-        const response = await fetch('http://127.00.1:5000/api/events');
+        const response = await fetch('http://127.0.0.1:5000/api/events');
         if (!response.ok) throw new Error('Network response was not ok');
         const events = await response.json();
 

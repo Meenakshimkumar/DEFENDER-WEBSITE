@@ -83,6 +83,11 @@ def add_event(source, animal, confidence, severity="medium"):
 def get_events():
     return jsonify(detection_events), 200
 
+from flask import Flask, request, jsonify, send_file, Response
+
+import time
+
+# --- (Skipping to where I will place the code) ---
 @app.route('/api/summary', methods=['GET'])
 def get_summary():
     intrusions = sum(1 for e in detection_events if e['severity'] == 'high')
@@ -93,6 +98,74 @@ def get_summary():
         "active_deterrents": 1 if intrusions > 0 else 0, # Mock deterrent state based on recent high severity
         "status": "Online"
     }), 200
+
+# --- RASPBERRY PI POLL CONFIGURATION ---
+PI_DATA_URL = "http://192.168.2.187:5000/data"
+
+import requests
+
+def pi_polling_worker():
+    """
+    Constantly polls the Raspberry Pi's JSON data stream to sync detections
+    into the central Flask event list for the Dashboard, Alerts, and Heatmap.
+    """
+    last_frame_id = -1
+    last_logged_time = 0
+
+    CLASS_NAMES = {
+        0: "Buffalo",
+        1: "Elephant",
+        2: "Rhino",
+        3: "Zebra"
+    }
+    
+    while True:
+        try:
+            # Poll at 2 Hz for logging purposes to keep the Dashboard updated without spamming
+            time.sleep(0.5)
+            
+            res = requests.get(PI_DATA_URL, timeout=2.0)
+            if res.status_code != 200:
+                continue
+
+            data = res.json()
+            if not data or 'frame_id' not in data:
+                continue
+                
+            frame_id = data['frame_id']
+            if frame_id == last_frame_id:
+                continue
+            last_frame_id = frame_id
+            
+            # Check for stale data (older than 2 seconds)
+            if time.time() - float(data.get('timestamp', 0)) > 2.0:
+                continue
+
+            boxes = data.get('boxes', [])
+            if not boxes:
+                continue
+
+            # Throttle event logging to max 1 event every 5 seconds
+            current_time = time.time()
+            if current_time - last_logged_time > 5:
+                # Find the most confident detection
+                best_box = max(boxes, key=lambda b: b.get('prob', 0))
+                highest_conf = best_box.get('prob', 0)
+                class_id = best_box.get('label', -1)
+                best_class = CLASS_NAMES.get(class_id, f"Class {class_id}")
+                
+                # All classes from the Edge AI Demo (Rhino, Elephant, Buffalo, Zebra) are large wildlife
+                severity = "high"
+                
+                add_event(source="Edge AI Stream", animal=best_class, confidence=highest_conf, severity=severity)
+                last_logged_time = current_time
+
+        except Exception as e:
+            time.sleep(2)
+
+# Start the background Pi polling thread immediately
+pi_thread = threading.Thread(target=pi_polling_worker, daemon=True)
+pi_thread.start()
 
 @app.route('/api/detect', methods=['POST'])
 def detect_objects():
@@ -150,9 +223,9 @@ def detect_objects():
                 
                 # Default severity logic
                 severity = "medium"
-                if animal_name.lower() in ['person', 'bear', 'wolf', 'lion', 'tiger']:
+                if animal_name.lower() in ['bear', 'wolf', 'lion', 'tiger']:
                     severity = "high"
-                elif animal_name.lower() in ['bird', 'cat', 'dog']:
+                elif animal_name.lower() in ['person', 'bird', 'cat', 'dog']:
                     severity = "low"
                     
                 add_event(source="Camera", animal=animal_name, confidence=top_det['confidence'], severity=severity)
