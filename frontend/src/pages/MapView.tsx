@@ -3,124 +3,41 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { Video, Wifi, Activity } from "lucide-react";
 
-const PI_IP = "http://192.168.2.187:5000";
-const INFERENCE_SIZE = 224;
-
-const CLASS_NAMES: Record<number, string> = {
-  0: "Buffalo",
-  1: "Elephant",
-  2: "Rhino",
-  3: "Zebra"
-};
-
-const COLORS = ["#00FFFF", "#FF4500", "#FFD700", "#00FF00"];
-
-interface DetectionData {
-  frame_id: number;
-  timestamp: number;
-  boxes: Array<{
-    label: number;
-    prob: number;
-    x: number;
-    y: number;
-    w: number;
-    h: number;
-  }>;
-}
+// --- CONFIGURATION ---
+const PI_IP = "http://100.122.74.118:5000";
 
 const MapView = () => {
-  const videoRef = useRef<HTMLImageElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [metrics, setMetrics] = useState({ fps: 0, detections: 0, connected: false });
+  const [metrics, setMetrics] = useState({ fps: "--", detections: 0, connected: false });
   const lastFrameIdRef = useRef<number>(-1);
 
   useEffect(() => {
     let intervalId: number;
-
-    const syncCanvasSize = () => {
-      if (videoRef.current && canvasRef.current) {
-        canvasRef.current.width = videoRef.current.clientWidth;
-        canvasRef.current.height = videoRef.current.clientHeight;
-      }
-    };
-
-    window.addEventListener('resize', syncCanvasSize);
-
-    // Initial sync slightly delayed so element mounts with correct size
-    setTimeout(syncCanvasSize, 100);
 
     const updateInference = async () => {
       try {
         const res = await fetch(`${PI_IP}/data`, { cache: "no-store", mode: 'cors' });
         if (!res.ok) throw new Error("Network issue");
 
-        const data: DetectionData = await res.json();
+        const data: any = await res.json();
 
-        if (!data || !data.frame_id) return;
-
-        // Drop stale frames
-        const now = Date.now() / 1000;
-        if (now - data.timestamp > 1.0) return;
+        if (!data || data.frame_id === undefined) return;
 
         // Skip if same frame
         if (data.frame_id === lastFrameIdRef.current) return;
         lastFrameIdRef.current = data.frame_id;
 
-        const canvas = canvasRef.current;
-        const ctx = canvas?.getContext('2d');
-        if (!canvas || !ctx) return;
-
-        // Re-sync size natively before drawing to prevent scaling artifacts
-        syncCanvasSize();
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
         const boxes = data.boxes || [];
-        setMetrics({ fps: data.frame_id, detections: boxes.length, connected: true });
-
-        const scaleX = canvas.width / INFERENCE_SIZE;
-        const scaleY = canvas.height / INFERENCE_SIZE;
-
-        boxes.forEach(box => {
-          const x = box.x * scaleX;
-          const y = box.y * scaleY;
-          const w = box.w * scaleX;
-          const h = box.h * scaleY;
-
-          const label = CLASS_NAMES[box.label] || `Class ${box.label}`;
-          const color = COLORS[box.label % COLORS.length];
-          const prob = (box.prob * 100).toFixed(0);
-
-          ctx.strokeStyle = color;
-          ctx.lineWidth = 3;
-          ctx.strokeRect(x, y, w, h);
-
-          ctx.fillStyle = color;
-          ctx.font = "bold 14px Arial";
-          const labelText = `${label} ${prob}%`;
-          const textWidth = ctx.measureText(labelText).width;
-
-          ctx.fillRect(x, y - 22, textWidth + 10, 22);
-
-          ctx.fillStyle = "#000000";
-          ctx.fillText(labelText, x + 5, y - 6);
-        });
+        setMetrics({ fps: data.frame_id.toString(), detections: boxes.length, connected: true });
 
       } catch (err) {
         setMetrics(m => ({ ...m, connected: false }));
-        const canvas = canvasRef.current;
-        if (canvas) {
-          const ctx = canvas.getContext('2d');
-          ctx?.clearRect(0, 0, canvas.width, canvas.height);
-        }
       }
     };
 
-    intervalId = window.setInterval(updateInference, 30);
+    // Lightweight poll strictly for the UI labels (fps, num detections)
+    intervalId = window.setInterval(updateInference, 500);
 
-    return () => {
-      window.clearInterval(intervalId);
-      window.removeEventListener('resize', syncCanvasSize);
-    };
+    return () => clearInterval(intervalId);
   }, []);
 
   return (
@@ -136,35 +53,26 @@ const MapView = () => {
           <div className="flex-1">
             <h3 className="text-sm font-semibold text-foreground">Raspberry Pi Stream</h3>
             <p className="text-xs text-muted-foreground mt-1">
-              Direct connection to <b>{PI_IP}</b> handling decoupled 224x224 NCNN bounding boxes.
+              Live feed from <b>{PI_IP}</b>. Bounding boxes are directly rendered natively onto the video by the Edge device.
             </p>
           </div>
         </div>
 
         {/* Video Container */}
-        <div className="relative rounded-2xl overflow-hidden shadow-xl border-2 border-border w-full max-w-3xl mx-auto bg-black flex items-center justify-center group">
+        <div className="relative rounded-2xl overflow-hidden shadow-xl border-2 border-border w-full max-w-3xl mx-auto bg-[#0a0a0a] flex items-center justify-center group min-h-[300px]">
 
-          {/* 1. Underlying Clean Video Stream */}
+          {/* 1. Underlying Video Stream (Already contains detection boxes) */}
           <img
-            ref={videoRef}
             src={`${PI_IP}/stream`}
-            alt="Raspberry Pi Offline"
+            alt="Raspberry Pi Stream"
             className="w-full h-auto object-contain block"
-            style={{ maxWidth: '672px' }}
-            onLoad={() => {
-              // Trigger sync immediately when image bounds are known
-              if (videoRef.current && canvasRef.current) {
-                canvasRef.current.width = videoRef.current.clientWidth;
-                canvasRef.current.height = videoRef.current.clientHeight;
-              }
+            style={{
+              maxWidth: '672px',
+              imageRendering: 'pixelated'
             }}
-          />
-
-          {/* 2. Transparent React Canvas Overlay exactly matching intrinsic dimensions */}
-          <canvas
-            ref={canvasRef}
-            className="absolute top-0 left-0 right-0 mx-auto pointer-events-none z-10"
-            style={{ maxWidth: '672px' }}
+            onError={(e) => {
+              (e.target as HTMLImageElement).alt = "Awaiting connection to Raspberry Pi Edge Pipeline...";
+            }}
           />
 
           {/* Status Bar Overlay Top left */}

@@ -19,6 +19,11 @@ DEFENDER is a comprehensive, AI-powered Edge computing architecture designed to 
   - **Vision**: `YOLOv8` based computer vision models for live object classification and bounding box localization.
   - **Audio**: Hugging Face `transformers` Audio Spectrogram pipeline (`ast-finetuned-audioset`) for real-time auditory event classification (identifying roars, barks, footsteps).
 
+- **Practical Hardware & Alert Simulations**:
+  - Simulated IVR Phone popup for farmers upon High/Medium severity animal detections.
+  - Native browser-based hardware deterrents utilizing Web Audio API (Ultrasonic, Sirens, Bee Sounds) and CSS (Flashlight Strobes).
+  - SMS Text Message API integration (via Textbelt) to push physical alert notifications to a saved mobile device.
+
 ## 🛠️ Technology Stack
 
 - **Frontend Environment**:
@@ -78,6 +83,6 @@ npm run dev
 
 ## 📡 Hardware Edge Configuration (Optional)
 
-By default, the Web Dashboard is built to fetch live inference coordinates (`/data`) and video streams (`/stream`) from an active Edge AI Node (like a Raspberry Pi) at **`192.168.2.187:5000`**.
+By default, the Web Dashboard is built to fetch live inference coordinates (`/data`) and video streams (`/stream`) from an active Edge AI Node (like a Raspberry Pi) at **`100.122.74.118:5000`**.
 
 If you wish to change the targeted IP Address of your hardware, modify `PI_IP` inside `frontend/src/pages/MapView.tsx` or update the `PI_DATA_URL` inside `backend/app.py`.

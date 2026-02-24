@@ -53,6 +53,33 @@ def health_check():
 # In a real production app, this would be a database (PostgreSQL/SQLite).
 detection_events = []
 
+def determine_deterrent(animal, severity):
+    if not animal:
+        return "None"
+    
+    animal_lower = str(animal).lower().strip()
+    
+    if 'elephant' in animal_lower:
+        return "Bee Sound & Flashlight Strobe"
+    elif any(predator in animal_lower for predator in ['bear', 'lion', 'tiger', 'wolf', 'panther', 'leopard']):
+        return "High-Intensity Siren & Flashlight"
+    elif any(mid_threat in animal_lower for mid_threat in ['boar', 'deer', 'moose', 'buffalo', 'rhino', 'zebra']):
+        return "Ultrasonic Sound & Flashlight"
+    elif any(small_threat in animal_lower for small_threat in ['dog', 'fox', 'coyote', 'cat', 'raccoon', 'possum', 'skunk']):
+        return "Ultrasonic Sound"
+    elif any(bird in animal_lower for bird in ['bird', 'pigeon', 'crow', 'owl', 'hawk', 'eagle']):
+        return "High-Pitch Ultrasonic"
+    elif 'human' in animal_lower or 'person' in animal_lower:
+        return "None" # Let pass silently due to low severity categorization
+    
+    # Fallback based on severity if animal type isn't specifically mapped
+    if severity == 'high':
+        return "Siren & Flashlight"
+    elif severity == 'medium':
+        return "Ultrasonic Sound"
+    else:
+        return "None"
+
 def add_event(source, animal, confidence, severity="medium"):
     # Emoji mapper for UI
     emoji_map = {
@@ -66,18 +93,30 @@ def add_event(source, animal, confidence, severity="medium"):
     emoji_key = str(animal).lower().split('/')[0] if animal else ''
     emoji = emoji_map.get(emoji_key, '⚠️')
 
+    deterrent = determine_deterrent(animal, severity)
+
     event = {
         "id": int(datetime.now().timestamp() * 1000),
         "animal": animal or "Unknown",
         "subtext": f"Detected via {source} ({confidence*100:.1f}%)",
         "timestamp": datetime.now().strftime("%I:%M %p"),
         "severity": severity,
+        "deterrent": deterrent,
         "emoji": emoji
     }
     detection_events.insert(0, event)
     # Keep only the latest 50 events to prevent memory leaks
     if len(detection_events) > 50:
         detection_events.pop()
+        
+    # Automatically dispatch SMS to the farmer if severity is high or medium
+    if severity in ["high", "medium"]:
+        contact = system_settings.get("emergency_contact")
+        if contact:
+            sms_msg = f"🚨 DEFENDER ALERT 🚨\n{emoji} {animal} detected!\nSource: {source}\nDeterrent Executed: {deterrent}\nPlease check your dashboard immediately."
+            # Fire and forget (don't block the API response returning to the frontend)
+            import threading
+            threading.Thread(target=send_sms_alert, args=(contact, sms_msg)).start()
 
 @app.route('/api/events', methods=['GET'])
 def get_events():
@@ -87,20 +126,89 @@ from flask import Flask, request, jsonify, send_file, Response
 
 import time
 
-# --- (Skipping to where I will place the code) ---
 @app.route('/api/summary', methods=['GET'])
 def get_summary():
     intrusions = sum(1 for e in detection_events if e['severity'] == 'high')
     animals = len(detection_events)
+    # Consider events within the last ~10 seconds as actively deterring currently. 
+    # For now, we'll proxy it by taking the last 3 events and checking if they have an active deterrent.
+    active_det = sum(1 for e in detection_events[:3] if e.get('deterrent', 'None') != 'None')
+    
     return jsonify({
         "total_intrusions": intrusions,
         "animals_detected": animals,
-        "active_deterrents": 1 if intrusions > 0 else 0, # Mock deterrent state based on recent high severity
+        "active_deterrents": active_det,
         "status": "Online"
     }), 200
 
 # --- RASPBERRY PI POLL CONFIGURATION ---
-PI_DATA_URL = "http://192.168.2.187:5000/data"
+PI_DATA_URL = "http://100.122.74.118:5000/data"
+
+import requests
+import os
+
+# --- SMS NOTIFICATION SETTINGS ---
+# Global in-memory settings (in production, use a database)
+system_settings = {
+    "emergency_contact": ""
+}
+
+def send_sms_alert(to_number, message_body):
+    if not to_number:
+        print("SMS Cancelled: No emergency contact configured.")
+        return False
+        
+    print(f"Attempting to send SMS to {to_number} using Textbelt API...")
+    
+    try:
+        # Using Textbelt for 1 free SMS per day out-of-the-box (no twilio account needed for testing)
+        resp = requests.post('https://textbelt.com/text', data={
+            'phone': to_number,
+            'message': message_body,
+            'key': 'textbelt',
+        })
+        result = resp.json()
+        
+        if result.get('success'):
+            print(f"SMS Sent Successfully! Quota remaining: {result.get('quotaRemaining')}")
+            return True
+        else:
+            print(f"Textbelt SMS Failed: {result.get('error')}")
+            # Fallback to console mock if the free daily quota is exhausted
+            print(f"[MOCK FALLBACK] To: {to_number} | Msg: {message_body}")
+            return False
+            
+    except Exception as e:
+        print(f"SMS Delivery Failed: {e}")
+        return False
+
+@app.route('/api/settings', methods=['GET', 'POST'])
+def manage_settings():
+    if request.method == 'POST':
+        data = request.json
+        if not data or 'emergency_contact' not in data:
+            return jsonify({"error": "Missing emergency_contact"}), 400
+            
+        system_settings["emergency_contact"] = data["emergency_contact"]
+        return jsonify({"status": "success", "message": "Settings updated"}), 200
+        
+    return jsonify(system_settings), 200
+
+@app.route('/api/test_sms', methods=['POST'])
+def test_sms_endpoint():
+    contact = system_settings.get("emergency_contact")
+    if not contact:
+        return jsonify({"error": "No emergency contact saved in settings."}), 400
+        
+    success = send_sms_alert(
+        to_number=contact,
+        message_body="🚨 DEFENDER SYSTEM TEST 🚨\nYour alert configuration is working correctly. You will receive real-time notifications here for high severity farm intrusions."
+    )
+    
+    if success:
+        return jsonify({"status": "success"}), 200
+    else:
+        return jsonify({"error": "Failed to send SMS. Daily free quota may be exhausted, check backend logs."}), 500
 
 import requests
 
@@ -138,8 +246,8 @@ def pi_polling_worker():
             last_frame_id = frame_id
             
             # Check for stale data (older than 2 seconds)
-            if time.time() - float(data.get('timestamp', 0)) > 2.0:
-                continue
+            # if time.time() - float(data.get('timestamp', 0)) > 2.0:
+            #     continue
 
             boxes = data.get('boxes', [])
             if not boxes:
@@ -310,7 +418,10 @@ def detect_audio():
                 'frog': 'Frog', 'croak': 'Frog',
                 'snake': 'Snake', 'rattle': 'Snake',
                 'whale': 'Whale', 'trumpet': 'Elephant', 'squeal': 'Elephant','grunt': 'Elephant', 'zebra': 'Zebra', 'squirrel': 'Squirrel',
-                'insect': 'Insect', 'cricket': 'Cricket', 'mosquito': 'Mosquito', 'fly': 'Fly', 'bee': 'Bee', 'wasp': 'Wasp'
+                'insect': 'Insect', 'cricket': 'Cricket', 'mosquito': 'Mosquito', 'fly': 'Fly', 'bee': 'Bee', 'wasp': 'Wasp',
+                'human': 'Human', 'speech': 'Human', 'conversation': 'Human', 'shout': 'Human', 'yell': 'Human', 
+                'scream': 'Human', 'whisper': 'Human', 'laugh': 'Human', 'cry': 'Human', 'cough': 'Human', 
+                'sneeze': 'Human', 'breath': 'Human', 'footstep': 'Human', 'voice': 'Human', 'person': 'Human'
             }
             
             # These are generic AudioSet classes that we want to IGNORE so specific animals win
@@ -353,7 +464,7 @@ def detect_audio():
                 animal_lower = str(identified_animal).lower()
                 if animal_lower in ['wolf', 'lion', 'tiger', 'bear', 'elephant', 'wild boar', 'panther']:
                     severity = "high"
-                elif animal_lower in ['bird', 'cat', 'dog', 'chicken', 'duck']:
+                elif animal_lower in ['bird', 'cat', 'dog', 'chicken', 'duck', 'human', 'person']:
                     severity = "low"
                     
                 add_event(source="Audio Sensor", animal=identified_animal, confidence=confidence, severity=severity)

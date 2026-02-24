@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Download, Filter, Clock, FileText } from "lucide-react";
+import { AlertTriangle, Download, Filter, Clock, FileText, Zap } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -148,6 +148,11 @@ const Alerts = () => {
                                 <div className={`w-2 h-2 rounded-full ${styles.badge}`} />
                               </div>
                               <p className="text-xs text-muted-foreground">{alert.subtext}</p>
+                              {alert.deterrent && alert.deterrent !== 'None' && (
+                                <p className="text-xs font-semibold text-primary mt-1 flex items-center gap-1">
+                                  <Zap className="w-3 h-3" /> Deterrent: {alert.deterrent}
+                                </p>
+                              )}
                             </div>
                             <div className="text-right">
                               <div className="flex items-center gap-1 text-muted-foreground">

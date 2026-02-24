@@ -1,10 +1,11 @@
-import { Home, BarChart3 } from "lucide-react";
+import { Home, BarChart3, Settings } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { icon: Home, label: "Home", path: "/dashboard", gradient: "gradient-primary" },
   { icon: BarChart3, label: "Analytics", path: "/heatmap", gradient: "gradient-secondary" },
+  { icon: Settings, label: "Settings", path: "/settings", gradient: "gradient-warm" },
 ];
 
 export const BottomNavigation = () => {

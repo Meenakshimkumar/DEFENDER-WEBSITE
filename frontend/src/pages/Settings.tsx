@@ -1,154 +1,173 @@
+import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { MobileLayout } from "@/components/layout/MobileLayout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Key, User, Bell, Wrench, ChevronRight, Shield, Moon, Globe } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { Phone, Save, ShieldAlert, CheckCircle2 } from "lucide-react";
 
-const accountSettings = [
-  {
-    icon: Key,
-    label: "Change Password",
-    description: "Update your account password",
-    gradient: "gradient-primary",
-  },
-  {
-    icon: User,
-    label: "Contact Info",
-    description: "Manage your contact details",
-    gradient: "gradient-secondary",
-  },
-  {
-    icon: Shield,
-    label: "Security",
-    description: "Two-factor authentication",
-    gradient: "gradient-accent",
-  },
-];
+export default function Settings() {
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const { toast } = useToast();
 
-const systemSettings = [
-  {
-    icon: Bell,
-    label: "Notifications",
-    description: "Configure alert preferences",
-    gradient: "gradient-warm",
-    hasToggle: true,
-  },
-  {
-    icon: Moon,
-    label: "Dark Mode",
-    description: "Toggle dark theme",
-    gradient: "gradient-cool",
-    hasToggle: true,
-  },
-  {
-    icon: Globe,
-    label: "Language",
-    description: "English (US)",
-    gradient: "gradient-secondary",
-  },
-  {
-    icon: Wrench,
-    label: "System Preferences",
-    description: "Advanced configuration",
-    gradient: "gradient-primary",
-  },
-];
+  useEffect(() => {
+    // Load existing phone number from backend
+    fetch("http://127.0.0.1:5000/api/settings")
+      .then(res => res.json())
+      .then(data => {
+        if (data.emergency_contact) {
+          setPhoneNumber(data.emergency_contact);
+        }
+      })
+      .catch(err => console.error("Could not load settings:", err));
+  }, []);
 
-const Settings = () => {
+  const handleSave = async () => {
+    if (!phoneNumber || phoneNumber.length < 10) {
+      toast({
+        title: "Invalid Phone Number",
+        description: "Please enter a valid phone number including country code (e.g. +1234567890).",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const res = await fetch("http://127.0.0.1:5000/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emergency_contact: phoneNumber })
+      });
+
+      if (res.ok) {
+        toast({
+          title: "Contact Saved!",
+          description: "Emergency SMS alerts will now be sent to this number.",
+        });
+      } else {
+        throw new Error("Failed to save to backend");
+      }
+    } catch (error) {
+      toast({
+        title: "Error Saving Contact",
+        description: "Could not connect to the DEFENDER backend.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const testSms = async () => {
+    toast({
+      title: "Sending Test Alert...",
+      description: "Triggering an API call to verify SMS delivery.",
+    });
+
+    try {
+      const res = await fetch("http://127.0.0.1:5000/api/test_sms", { method: "POST" });
+
+      if (res.ok) {
+        toast({
+          title: "Test SMS Sent!",
+          description: "Check your phone for the DEFENDER alert message.",
+        });
+      } else {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to send SMS");
+      }
+    } catch (error: any) {
+      toast({
+        title: "SMS Failed",
+        description: error.message || "Failed to trigger the SMS API. Ensure backend is running.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <MobileLayout>
-      <PageHeader title="DEFENDER - Settings" />
-      
+      <PageHeader title="System Settings" />
+
       <div className="p-4 space-y-6">
-        {/* Profile Header */}
-        <div className="flex items-center gap-4 p-4 bg-card rounded-2xl border border-border shadow-lg animate-fade-in">
-          <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center shadow-lg glow-primary">
-            <User className="w-8 h-8 text-primary-foreground" />
-          </div>
-          <div className="flex-1">
-            <h2 className="text-lg font-bold text-foreground">John Ranger</h2>
-            <p className="text-sm text-muted-foreground">Wildlife Protection Officer</p>
-            <div className="flex items-center gap-1 mt-1">
-              <div className="w-2 h-2 rounded-full bg-success" />
-              <span className="text-xs text-success font-medium">Active</span>
+        <section className="animate-fade-in">
+          <Card className="border-2 border-primary/20 shadow-lg overflow-hidden relative">
+            <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+              <ShieldAlert className="w-32 h-32" />
             </div>
-          </div>
-        </div>
 
-        {/* Account Settings */}
+            <CardHeader className="bg-primary/5 border-b border-primary/10">
+              <CardTitle className="flex items-center gap-2 text-xl text-primary">
+                <Phone className="w-6 h-6" />
+                Emergency SMS Alerts
+              </CardTitle>
+              <CardDescription>
+                Configure the farmer contact number that will automatically receive SMS text messages when a high-severity intrusion (Lion, Wolf, Elephant, etc.) is detected.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-muted-foreground">Mobile Phone Number (with Country Code)</label>
+                <div className="flex gap-2">
+                  <Input
+                    type="tel"
+                    placeholder="+91 98765 43210"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    className="flex-1 text-lg py-6"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">Format examples: +1 (USA), +91 (India), +44 (UK)</p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                <Button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="w-full sm:w-auto flex-1 h-12 text-md gap-2"
+                >
+                  {isSaving ? "Saving..." : <><Save className="w-5 h-5" /> Save Contact Number</>}
+                </Button>
+
+                <Button
+                  onClick={testSms}
+                  variant="outline"
+                  className="w-full sm:w-auto h-12 text-md gap-2 border-primary/30 hover:bg-primary/10"
+                >
+                  <ShieldAlert className="w-5 h-5 text-primary" /> Test SMS Delivery
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
         <section className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
-          <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-            <User className="w-5 h-5 text-primary" />
-            Account Settings
-          </h2>
-          <div className="space-y-3">
-            {accountSettings.map((item, index) => (
-              <Card 
-                key={index} 
-                className="overflow-hidden border-0 shadow-md hover:shadow-lg transition-all hover:scale-[1.01] cursor-pointer"
-              >
-                <CardContent className="p-0">
-                  <div className="flex items-center">
-                    <div className={`${item.gradient} p-4 flex items-center justify-center`}>
-                      <item.icon className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="flex-1 p-4 flex items-center justify-between bg-card">
-                      <div>
-                        <h3 className="font-semibold text-foreground text-sm">{item.label}</h3>
-                        <p className="text-xs text-muted-foreground">{item.description}</p>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <Card className="border shadow-sm opacity-60">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-green-500" /> System Status
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              <div className="flex justify-between py-1 border-b">
+                <span>Edge AI Pipeline</span>
+                <span className="text-green-500 font-semibold">Active</span>
+              </div>
+              <div className="flex justify-between py-1 border-b">
+                <span>Audio Classification Node</span>
+                <span className="text-green-500 font-semibold">Active</span>
+              </div>
+              <div className="flex justify-between py-1 border-b">
+                <span>Hardware Deterrents (Ultrasonic/Strobe)</span>
+                <span className="text-green-500 font-semibold">Ready</span>
+              </div>
+            </CardContent>
+          </Card>
         </section>
-
-        {/* System Settings */}
-        <section className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
-          <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-            <Wrench className="w-5 h-5 text-secondary" />
-            System Settings
-          </h2>
-          <div className="space-y-3">
-            {systemSettings.map((item, index) => (
-              <Card 
-                key={index} 
-                className="overflow-hidden border-0 shadow-md hover:shadow-lg transition-all cursor-pointer"
-              >
-                <CardContent className="p-0">
-                  <div className="flex items-center">
-                    <div className={`${item.gradient} p-4 flex items-center justify-center`}>
-                      <item.icon className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="flex-1 p-4 flex items-center justify-between bg-card">
-                      <div>
-                        <h3 className="font-semibold text-foreground text-sm">{item.label}</h3>
-                        <p className="text-xs text-muted-foreground">{item.description}</p>
-                      </div>
-                      {item.hasToggle ? (
-                        <Switch />
-                      ) : (
-                        <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
-
-        {/* App Version */}
-        <div className="text-center pt-4 animate-fade-in" style={{ animationDelay: '0.3s' }}>
-          <p className="text-xs text-muted-foreground">DEFENDER v2.0.1</p>
-          <p className="text-xs text-muted-foreground mt-1">© 2024 Wildlife Protection Systems</p>
-        </div>
       </div>
     </MobileLayout>
   );
-};
-
-export default Settings;
+}

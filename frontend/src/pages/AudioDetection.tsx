@@ -227,7 +227,7 @@ const AudioDetection = () => {
                                                         >
                                                             <Square className="w-8 h-8 text-destructive-foreground fill-current" />
                                                         </Button>
-                                                        <div className="absolute inset-0 rounded-full border-4 border-destructive animate-ping opacity-50"></div>
+                                                        <div className="absolute inset-0 rounded-full border-4 border-destructive animate-ping opacity-50 pointer-events-none"></div>
                                                     </div>
 
                                                     <h3 className="text-lg font-bold text-destructive mb-1">{formatTime(recordingTime)}</h3>

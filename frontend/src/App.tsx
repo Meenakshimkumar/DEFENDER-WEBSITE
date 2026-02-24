@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { GlobalAlertSound } from "./components/GlobalAlertSound";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import MapView from "./pages/MapView";
@@ -12,6 +13,7 @@ import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 import Detection from "./pages/Detection";
 import AudioDetection from "./pages/AudioDetection";
+import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient();
 
@@ -20,6 +22,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <GlobalAlertSound />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
@@ -30,6 +33,7 @@ const App = () => (
           <Route path="/reports" element={<Reports />} />
           <Route path="/detect" element={<Detection />} />
           <Route path="/audio-detect" element={<AudioDetection />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
